@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Petualangan CPU: Indirect Addressing</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+:root{--bg:#e9edf5;--card:#fff;--ink:#1a1033;--mute:#5d5878;--line:#1a1033;--sh:#1a103340;--grid:#1a10330a;--ins:#3b66e8;--ptr:#c27700;--op:#0c8a63;--insb:#dde6ff;--ptrb:#ffeccb;--opb:#d3f6e9;--yel:#ffd000;--px:"Press Start 2P",ui-monospace,Menlo,Consolas,monospace;--frame:clamp(34px,4vw,56px);--pm:clamp(30px,3vw,48px);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0c0a1c;--card:#1a1433;--ink:#ece6ff;--mute:#a79fc8;--line:#7b6fb0;--sh:#00000066;--grid:#ffffff0a;--ins:#7c9bff;--ptr:#ffb62e;--op:#3be0aa;--insb:#1c2850;--ptrb:#3d2c0a;--opb:#0d3a2c}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0c0a1c;--card:#1a1433;--ink:#ece6ff;--mute:#a79fc8;--line:#7b6fb0;--sh:#00000066;--grid:#ffffff0a;--ins:#7c9bff;--ptr:#ffb62e;--op:#3be0aa;--insb:#1c2850;--ptrb:#3d2c0a;--opb:#0d3a2c}
+html{scroll-padding-top:env(safe-area-inset-top,0px);font-size:clamp(15px,.45vw + 12px,20px)}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;padding:var(--frame);background:var(--bg) linear-gradient(var(--grid) 1px,transparent 1px) 0 0/32px 32px;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:32px 32px;color:var(--ink);font:1rem/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden;min-height:100dvh}
+body.simmode{--frame:clamp(12px,2vw,28px)}
+main{max-width:1240px;margin:0 auto;position:relative;z-index:2}
+h1{font:400 clamp(.95rem,1vw + .6rem,1.5rem)/1.6 var(--px);margin:0 0 12px}
+h1.big{font-size:clamp(1.1rem,2.2vw + .4rem,2.4rem);line-height:1.5;margin-bottom:18px}
+h2{font:400 .62rem/1.6 var(--px);margin:0 0 10px;color:var(--mute)}
+p{margin:0 0 10px;max-width:62ch}
+.lead{font-size:clamp(1rem,.3vw + .95rem,1.2rem)}
+.eyebrow{font:400 .6rem var(--px);color:var(--ptr);margin-bottom:14px;letter-spacing:.05em}
+button{font:400 .58rem/1.4 var(--px);cursor:pointer;color:var(--ink);background:var(--card);border:3px solid var(--line);padding:.7rem .85rem;box-shadow:3px 3px 0 var(--sh);border-radius:0;-webkit-tap-highlight-color:transparent}
+button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--sh)}
+button:focus-visible{outline:3px solid var(--ins);outline-offset:2px}
+button:disabled{opacity:.4;cursor:default}
+@media (hover:hover){button:not(:disabled):hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--sh)}}
+@media (pointer:coarse){button{min-height:44px}}
+.primary{background:var(--ins);color:#fff;border-color:var(--ink)}
+.cta{font-size:.75rem;padding:1rem 1.4rem}
+.on{background:var(--ink);color:var(--bg)}
+.panel{background:var(--card);border:3px solid var(--line);box-shadow:5px 5px 0 var(--sh);padding:clamp(12px,1.4vw,20px);margin-bottom:16px}
+.mute{color:var(--mute)}
+.box2{border:3px dashed var(--line);padding:10px 12px;margin:8px 0}
+nav{display:flex;gap:10px;align-items:center;margin-bottom:clamp(16px,3vw,32px);flex-wrap:wrap}
+nav .sp{flex:1}.score{font:400 .55rem var(--px)}
+/* pacman */
+.trail{position:fixed;inset:calc(var(--frame)/2 - 3px);border:6px dotted var(--yel);opacity:.4;pointer-events:none;z-index:1}
+.pac,.gh{--a:calc(var(--frame)/2 - var(--pm)/2);--b:calc(100% - var(--frame)/2 - var(--pm)/2);position:fixed;width:var(--pm);height:var(--pm);z-index:3;pointer-events:none;animation-duration:18s;animation-timing-function:steps(44);animation-iteration-count:infinite;animation-fill-mode:backwards}
+.pac{border-radius:50%;background:conic-gradient(var(--yel) 0 55deg,transparent 55deg 125deg,var(--yel) 125deg);animation-name:lap,chomp;animation-duration:18s,.3s;animation-timing-function:steps(44),steps(1)}
+@keyframes chomp{50%{background:conic-gradient(var(--yel) 0 85deg,transparent 85deg 95deg,var(--yel) 95deg)}}
+.gh{background:#ff4d6d;border-radius:50% 50% 0 0;clip-path:polygon(0 0,100% 0,100% 100%,83% 80%,66% 100%,50% 80%,33% 100%,16% 80%,0 100%);animation-name:lapg;animation-delay:2.6s}
+.gh::before,.gh::after{content:"";position:absolute;top:26%;width:26%;height:30%;background:#fff;border:3px solid #1a3cff}
+.gh::before{left:16%}.gh::after{right:16%}
+@keyframes lap{0%{left:var(--a);top:var(--a);transform:rotate(0)}24.9%{left:var(--b);top:var(--a);transform:rotate(0)}25%{left:var(--b);top:var(--a);transform:rotate(90deg)}49.9%{left:var(--b);top:var(--b);transform:rotate(90deg)}50%{left:var(--b);top:var(--b);transform:rotate(180deg)}74.9%{left:var(--a);top:var(--b);transform:rotate(180deg)}75%{left:var(--a);top:var(--b);transform:rotate(270deg)}100%{left:var(--a);top:var(--a);transform:rotate(270deg)}}
+@keyframes lapg{0%{left:var(--a);top:var(--a)}25%{left:var(--b);top:var(--a)}50%{left:var(--b);top:var(--b)}75%{left:var(--a);top:var(--b)}100%{left:var(--a);top:var(--a)}}
+/* home */
+.hero{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:clamp(20px,4vw,64px);align-items:center;min-height:clamp(320px,52dvh,560px)}
+@media(max-width:760px){.hero{grid-template-columns:1fr;min-height:0}}
+.tag3{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 22px}
+.tag3 span{font:400 .55rem var(--px);padding:7px 9px;border:3px solid var(--line)}
+.arcade{position:relative;border:4px solid var(--line);background:var(--card);box-shadow:8px 8px 0 var(--sh);padding:clamp(34px,4vw,46px) 12px 22px;overflow:hidden}
+.arcade::before{content:"MEMORI";position:absolute;left:0;top:0;right:0;padding:8px 12px;font:400 .55rem var(--px);background:var(--ink);color:var(--bg)}
+.stack{display:flex;flex-direction:column-reverse;gap:clamp(6px,.8vw,10px);align-items:center;animation:sway 3s steps(6) infinite alternate}
+.bx{width:min(100%,clamp(170px,19vw,300px));height:clamp(44px,4.6vw,72px);font:400 clamp(.6rem,.9vw,.85rem) var(--px);color:#fff;border:4px solid var(--ink);box-shadow:4px 4px 0 var(--sh);animation:bob 1.2s steps(3) infinite alternate;animation-delay:var(--d)}
+.bx:active{transform:translateY(-4px)}
+@keyframes bob{to{transform:translateY(-12px)}}
+@keyframes sway{to{transform:translateX(clamp(6px,1.4vw,22px))}}
+.steps3{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(10px,2vw,24px);margin-top:clamp(20px,3vw,40px)}
+@media(max-width:760px){.steps3{grid-template-columns:1fr}}
+.steps3 .panel{margin:0}.steps3 b{font:400 .7rem var(--px);display:block;margin-bottom:8px}
+/* sim */
+.mission{border-left:8px solid var(--ptr);background:var(--ptrb);padding:10px 14px;margin-bottom:16px}
+details summary{cursor:pointer;font:400 .62rem/1.6 var(--px)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:8px 0 0}.kv dt{font:400 .55rem/1.9 var(--px)}.kv dd{margin:0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.row b{font:400 .55rem var(--px);margin-right:4px}
+.simgrid{display:grid;grid-template-columns:1fr;gap:0 clamp(16px,2vw,28px)}
+@media(min-width:1000px){.simgrid{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}}
+.ins{font:400 clamp(.9rem,.5vw + .7rem,1.2rem) var(--px)}
+.ins small{display:block;font:400 .95rem system-ui,sans-serif;color:var(--mute);margin-top:8px}
+.ins em{display:block;font:italic 400 .95rem system-ui,sans-serif;margin-top:4px}
+#stage{position:relative;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+.grid .panel{margin-bottom:0}
+.cell{display:flex;justify-content:space-between;align-items:center;gap:8px;border:3px solid var(--line);padding:.55rem .7rem;margin-bottom:8px;font:400 .62rem var(--px);background:var(--card);transition:background .2s}
+.cell span:first-child{color:var(--mute)}.cell b{font-weight:400;font-size:.75rem}
+.cell.ins{background:var(--insb);border-color:var(--ins)}.cell.ptr{background:var(--ptrb);border-color:var(--ptr)}.cell.op{background:var(--opb);border-color:var(--op)}.cell.hit{animation:hit .5s steps(4)}
+@keyframes hit{0%,100%{transform:none}25%{transform:translate(-3px,0)}75%{transform:translate(3px,0)}}
+.tag{font-size:.5rem;margin-left:8px}.ins .tag{color:var(--ins)}.ptr .tag{color:var(--ptr)}.op .tag{color:var(--op)}
+.pkt{position:absolute;left:0;top:0;width:56px;height:32px;display:flex;align-items:center;justify-content:center;font:400 .5rem var(--px);border:3px solid;opacity:0;pointer-events:none;z-index:20;box-shadow:3px 3px 0 var(--sh)}
+.pkt.ins{background:var(--insb);border-color:var(--ins);color:var(--ins)}.pkt.ptr{background:var(--ptrb);border-color:var(--ptr);color:var(--ptr)}.pkt.op{background:var(--opb);border-color:var(--op);color:var(--op)}
+.px{position:absolute;width:8px;height:8px;z-index:21;pointer-events:none;animation:burst .7s steps(7) forwards}
+@keyframes burst{to{transform:translate(var(--dx),var(--dy));opacity:0}}
+.legend{display:flex;gap:12px;flex-wrap:wrap;color:var(--mute);font-size:.86rem;margin-top:12px}
+.dot{display:inline-block;width:11px;height:11px;margin-right:5px;vertical-align:-1px}
+.prog{display:flex;gap:4px;margin:0 0 10px}.prog i{flex:1;height:8px;background:var(--line);opacity:.25}.prog i.on{opacity:1;background:var(--ins)}
+.stt{font:400 .65rem/1.6 var(--px);margin-bottom:8px}
+.story{min-height:3.6em;font-size:1.05rem}
+.cur::after{content:"_";animation:blink 1s steps(2) infinite}@keyframes blink{50%{opacity:0}}
+.why{color:var(--mute);font-size:.95rem;margin-top:6px}
+.ctrl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+@media(max-width:560px){.ctrl button{flex:1 1 40%}}
+.count{margin-left:auto;font:400 .6rem var(--px)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.pc{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:620px){.pc{grid-template-columns:1fr}}
+.tblwrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:480px}
+th,td{text-align:left;padding:8px 10px;border-bottom:2px solid var(--line);font-size:.92rem}
+tr.cur2 td{background:var(--insb)}
+.bar{display:inline-block;height:10px;background:var(--ptr);vertical-align:middle;margin-right:6px}
+@media(max-width:560px){:root{--pm:28px}nav button{flex:1}nav .sp{display:none}.score{width:100%}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.pac,.gh,.trail{display:none}}
+</style>
+</head>
+<body>
+<div class="trail" id="trail"></div><div class="pac" id="pac"></div><div class="gh" id="gh"></div>
+<main>
+<nav aria-label="Menu utama">
+ <button id="nh" class="on" aria-current="page">HOME</button>
+ <button id="ns">SIMULASI</button>
+ <span class="sp"></span><span class="score" id="score" hidden></span><button id="snd" aria-pressed="true">Suara: nyala</button>
+</nav>
+
+<section id="home">
+ <div class="hero">
+  <div>
+   <div class="eyebrow">PETUALANGAN CPU</div>
+   <h1 class="big">Bagaimana CPU menemukan data?</h1>
+   <p class="lead">Setiap instruksi butuh sebuah angka (operand) dari memori. Tapi instruksi itu kecil, jadi alamat yang bisa ditulis di dalamnya terbatas.</p>
+   <p class="lead"><b>Indirect addressing</b> punya akal: instruksi menunjuk sebuah kotak memori yang isinya <b>alamat</b> kotak lain, tempat data sebenarnya berada.</p>
+   <div class="tag3"><span style="background:var(--insb)">jangkauan luas</span><span style="background:var(--ptrb)">akses ganda</span><span style="background:var(--opb)">pointer</span></div>
+   <button class="primary cta" id="go">MULAI SIMULASI</button>
+   <p class="mute" style="margin-top:16px">Tip: klik atau sentuh kotak memori untuk mendengar nadanya.</p>
+  </div>
+  <div class="arcade"><div class="stack" id="stack" aria-label="Tumpukan kotak memori"></div></div>
+ </div>
+ <div class="steps3">
+  <div class="panel"><b>01 TEBAK</b>Prediksi dulu berapa hasil ACC sebelum simulasi berjalan.</div>
+  <div class="panel"><b>02 JALANKAN</b>Ikuti paket data berpindah antar memori dan register, langkah demi langkah.</div>
+  <div class="panel"><b>03 BANDINGKAN</b>Lihat berapa kali memori dibuka di tiap mode, lalu ubah pointer dan coba lagi.</div>
+ </div>
+</section>
+
+<section id="sim" hidden>
+ <h1>Misi: Temukan Operand</h1>
+
+ <div class="panel">
+  <h2>YANG AKAN KITA AMATI</h2>
+  <ol>
+   <li>Di mana operand yang sebenarnya ditemukan?</li>
+   <li>Berapa kali CPU harus membaca memori?</li>
+   <li>Berapa hasil akhir di akumulator (ACC)?</li>
+  </ol>
+  <p>Kita akan membandingkan indirect dengan empat mode lain untuk melihat kelebihan dan kekurangannya.</p>
+ </div>
+
+ <div class="panel">
+  <h2>KENALAN DULU DENGAN ISTILAHNYA</h2>
+  <dl class="kv">
+   <dt>Operand</dt><dd>Data yang diolah oleh instruksi, misalnya angka yang ditambahkan.</dd>
+   <dt>ACC</dt><dd>Akumulator, register tempat hasil perhitungan disimpan. Nilai awalnya 10.</dd>
+   <dt>IR</dt><dd>Instruction Register, tempat instruksi yang sedang dijalankan.</dd>
+   <dt>EA</dt><dd>Effective Address, alamat asli tempat operand berada.</dd>
+   <dt>Pointer</dt><dd>Nilai yang berisi sebuah alamat, bukan data biasa.</dd>
+  </dl>
+  <div class="legend">
+   <span><span class="dot" style="background:var(--ins)"></span>biru = instruksi</span>
+   <span><span class="dot" style="background:var(--ptr)"></span>kuning = alamat/pointer</span>
+   <span><span class="dot" style="background:var(--op)"></span>hijau = operand</span>
+  </div>
+  <p class="mute" style="margin-top:12px">Kondisi awal: ACC = 10, R1 = 700, Mem[500] = 700, Mem[700] = 25.</p>
+ </div>
+
+ <div class="mission">Tebak hasilnya dulu, jalankan simulasinya, lalu cek tebakanmu. Ubah isi pointer untuk melihat bagaimana jalurnya ikut berubah.</div>
+ <div class="row"><b>ISI POINTER (Mem[500] dan R1):</b><span class="row" id="ptrs" style="display:inline-flex;margin:0"></span></div>
+ <div class="row"><b>MODE:</b><span class="row" id="tabs" role="group" aria-label="Pilih mode" style="display:inline-flex;margin:0"></span></div>
+ <div class="simgrid">
+  <div>
+   <div class="panel"><div class="ins" id="ins"></div></div>
+   <div id="stage">
+    <div class="grid"><div class="panel"><h2>MEMORI</h2><div id="mem"></div></div><div class="panel"><h2>REGISTER CPU</h2><div id="regs"></div></div></div>
+    <div class="pkt" id="pkt"></div>
+   </div>
+  </div>
+  <div>
+   <div class="panel" id="pred" style="border-style:dashed"></div>
+   <div class="panel">
+    <div class="prog" id="prog"></div><div class="stt" id="stt"></div>
+    <div class="story cur" id="story" aria-hidden="true"></div><span class="sr" id="srt" aria-live="polite"></span>
+    <div class="why" id="why"></div>
+    <div class="ctrl"><button class="primary" id="next">Langkah berikutnya</button><button id="auto">Putar otomatis</button><button id="reset">Ulangi</button><span class="count" id="count"></span></div>
+   </div>
+   <div class="panel" id="concl" hidden></div>
+  </div>
+ </div>
+ <div class="panel"><h2>PERBANDINGAN AKSES MEMORI (TERMASUK FETCH)</h2><div class="tblwrap"><table><thead><tr><th>Mode</th><th>EA</th><th>Akses memori</th><th>ACC akhir</th></tr></thead><tbody id="cmp"></tbody></table></div></div>
+</section>
+</main>
+<script>
+var BASE={300:42,700:25,900:88},ACC0=10,P=700;
+var RM=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+function mem(a){return a==500?P:BASE[a]}
+var F=["c100","rIR","ADD","ins"];
+function build(){var v=BASE[P],S=function(){return Array.prototype.slice.call(arguments)};return{
+imm:{n:"Immediate",ea:"tidak ada",ins:"ADD #25",d:"Operand 25 ditulis langsung di dalam instruksi.",an:"Analogi: diberi surat yang isinya langsung angka yang dicari.",res:35,pro:"Tercepat: tanpa akses memori untuk operand.",con:"Angka dibatasi ukuran field instruksi.",st:[
+ S("Ambil instruksi","CPU membaca ADD #25 dari Mem[100] ke IR.","Fetch instruksi selalu jadi akses memori pertama.",{100:"ins"},{},1,0,F),
+ S("Cek operand","Tanda # berarti 25 adalah operand itu sendiri, sudah ikut di instruksi.","Tidak ada perjalanan ke memori lagi.",{},{},0,0,["rIR","rACC","25","op"]),
+ S("Hitung","ACC = 10 + 25 = 35.","Hasil jadi tanpa akses tambahan.",{},{},0,1)]},
+dir:{n:"Direct",ea:"A = 500",ins:"ADD 500",d:"Field alamat A = 500 langsung menunjuk operand.",an:"Analogi: diberi nomor loker, isinya langsung barang.",res:10+P,pro:"Sederhana: 1 akses memori untuk operand.",con:"Jangkauan dibatasi lebar field alamat.",st:[
+ S("Ambil instruksi","CPU membaca ADD 500 dari Mem[100] ke IR.","Fetch instruksi selalu jadi akses pertama.",{100:"ins"},{},1,0,F),
+ S("Baca field alamat","A = 500, jadi EA = 500. Alamat dikirim ke memori.","Pada Direct, EA sama dengan isi field alamat.",{},{},0,0,["rIR","c500","500","ptr"]),
+ S("Ambil operand","CPU membaca Mem[500] = "+P+". Angka "+P+" inilah operand.","Satu perjalanan cukup karena alamat 500 langsung berisi data.",{500:"op"},{},1,0,["c500","rACC",""+P,"op"]),
+ S("Hitung","ACC = 10 + "+P+" = "+(10+P)+".","Bandingkan nanti dengan Indirect.",{},{},0,1)]},
+ind:{n:"Indirect",ea:"(A) = Mem[500] = "+P,ins:"ADD (500)",d:"Alamat 500 tidak berisi data, melainkan alamat data.",an:"Analogi: nomor loker yang isinya kertas bertuliskan nomor loker lain.",res:10+v,pro:"Jangkauan alamat besar: field kecil bisa menunjuk sepanjang satu word.",con:"2 akses memori untuk operand, jadi lebih lambat.",st:[
+ S("Ambil instruksi","CPU membaca ADD (500) dari Mem[100] ke IR.","Fetch instruksi selalu jadi akses pertama.",{100:"ins"},{},1,0,F),
+ S("Baca field alamat","A = 500. Tanda kurung: 500 bukan operand, melainkan tempat alamat operand disimpan.","Inti indirect: instruksi kecil cukup memuat satu alamat dekat.",{},{},0,0,["rIR","c500","500","ptr"]),
+ S("Baca pointer","CPU membaca Mem[500] = "+P+". Ini alamat, bukan data. Jadi EA = "+P+".","Kuning = pointer. Lokasi operand baru diketahui setelah kotak ini dibuka.",{500:"ptr"},{},1,0,["c500","rIR",""+P,"ptr"]),
+ S("Ambil operand","CPU ke alamat "+P+" dan membaca Mem["+P+"] = "+v+". Inilah operand sebenarnya.","Perjalanan kedua ke memori, penyebab indirect lebih lambat.",{500:"ptr",[P]:"op"},{},1,0,["c"+P,"rACC",""+v,"op"]),
+ S("Hitung","ACC = 10 + "+v+" = "+(10+v)+".","Bandingkan dengan Direct: alamat awalnya sama (500), tapi indirect mengikuti pointer.",{},{},0,1)]},
+reg:{n:"Register",ea:"R1",ins:"ADD R1",d:"Operand diambil dari register.",an:"Analogi: barangnya sudah ada di saku sendiri.",res:10+P,pro:"Sangat cepat, field cukup 3-4 bit.",con:"Jumlah register terbatas.",st:[
+ S("Ambil instruksi","CPU membaca ADD R1 dari Mem[100] ke IR.","Fetch instruksi selalu jadi akses pertama.",{100:"ins"},{},1,0,F),
+ S("Ambil dari register","R1 berisi "+P+", dan itu operandnya. Tanpa akses memori tambahan.","Register ada di dalam CPU, jauh lebih cepat dari memori.",{},{R1:"op"},0,0,["rR1","rACC",""+P,"op"]),
+ S("Hitung","ACC = 10 + "+P+" = "+(10+P)+".","Hasil sama dengan Direct, tanpa akses kedua.",{},{},0,1)]},
+ri:{n:"Register indirect",ea:"(R1) = "+P,ins:"ADD (R1)",d:"R1 menyimpan alamat operand.",an:"Analogi: di saku ada catatan nomor loker, tinggal ke loker itu.",res:10+v,pro:"Jangkauan luas dengan hanya 1 akses memori untuk operand.",con:"Register harus sudah berisi alamat yang benar.",st:[
+ S("Ambil instruksi","CPU membaca ADD (R1) dari Mem[100] ke IR.","Fetch instruksi selalu jadi akses pertama.",{100:"ins"},{},1,0,F),
+ S("Baca register","R1 berisi "+P+". Tanda kurung: "+P+" adalah alamat operand (EA).","Pointer ada di register, jadi tidak perlu membuka memori untuk mendapatkannya.",{},{R1:"ptr"},0,0,["rR1","c"+P,""+P,"ptr"]),
+ S("Ambil operand","CPU membaca Mem["+P+"] = "+v+". Inilah operand.","Hanya 1 perjalanan memori untuk operand.",{[P]:"op"},{R1:"ptr"},1,0,["c"+P,"rACC",""+v,"op"]),
+ S("Hitung","ACC = 10 + "+v+" = "+(10+v)+".","Hasil sama dengan Indirect, 1 akses lebih sedikit.",{},{},0,1)]}}}
+var SFX={ins:[[523,0,.07],[784,.08,.09]],ptr:[[392,0,.06],[587,.07,.06],[880,.14,.09]],op:[[988,0,.06],[1319,.07,.15]],win:[[523,0,.09],[659,.1,.09],[784,.2,.09],[1047,.3,.28]],pick:[[660,0,.05],[880,.06,.05]],reset:[[440,0,.06],[330,.07,.06],[220,.14,.12]]};
+var M=build(),AC=null,snd=true,cur="ind",i=-1,timer=null,busy=false,tw=null,answered=false,sc=[0,0];
+var $=function(x){return document.getElementById(x)};
+function ac(){if(!AC){var C=window.AudioContext||window.webkitAudioContext;if(C)AC=new C()}if(AC&&AC.state==="suspended")AC.resume();return AC}
+function tone(f,t0,d,type){var a=ac();if(!a||!snd)return;var o=a.createOscillator(),g=a.createGain(),t=a.currentTime+t0;o.type=type;o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.07,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+d+.03)}
+function sfx(k){SFX[k].forEach(function(n){tone(n[0],n[1],n[2],k==="win"?"triangle":"square")})}
+var TAG={ins:"instruksi",ptr:"pointer",op:"operand"};
+function total(m,k){var t=0;for(var j=0;j<=k;j++)t+=M[m].st[j][5];return t}
+function type(t){clearInterval(tw);var n=0,s=$("story");$("srt").textContent=t;if(RM){s.textContent=t;return}tw=setInterval(function(){n+=2;s.textContent=t.slice(0,n);if(n>=t.length)clearInterval(tw)},16)}
+function info(){var m=M[cur],N=m.st.length,s=i>=0?m.st[i]:null,p="";
+ for(var j=0;j<N;j++)p+='<i class="'+(j<=i?"on":"")+'"></i>';$('prog').innerHTML=p;
+ if(s){$('stt').textContent="Langkah "+(i+1)+" dari "+N+": "+s[0];type(s[1]);$('why').textContent="Kenapa begitu? "+s[2]}
+ else{$('stt').textContent="Siap dimulai";type("Mode "+m.n+". "+m.an+" Tekan Langkah berikutnya.");$('why').textContent=""}}
+function opts(){var m=M[cur],c=[10+P,10+BASE[P],35,52,98,710],o=[m.res];c.forEach(function(x){if(o.length<3&&o.indexOf(x)<0)o.push(x)});return o.sort(function(a,b){return a-b})}
+function pred(){var el=$('pred'),m=M[cur];el.hidden=i>=0;if(i>=0)return;
+ if(answered){return}
+ el.innerHTML='<h2>TEBAK DULU!</h2><p>Untuk <b>'+m.ins+'</b> dengan pointer '+P+' (ACC awal 10), berapa ACC akhirnya?</p><div class="row" id="po"></div><p id="pf" class="mute"></p>';
+ opts().forEach(function(x){var b=document.createElement('button');b.textContent=x;b.onclick=function(){ac();answered=true;sc[1]++;var ok=x==m.res;if(ok)sc[0]++;sfx(ok?'win':'reset');score();
+  el.innerHTML='<h2>'+(ok?'BENAR!':'BELUM TEPAT')+'</h2><p>'+(ok?'Tebakanmu tepat: ':'Jawaban yang benar: ')+'<b>'+m.res+'</b>. Jalankan simulasinya untuk melihat alasannya.</p>'};$('po').appendChild(b)})}
+function score(){$('score').hidden=false;$('score').textContent="TEBAKAN BENAR: "+sc[0]+"/"+sc[1]}
+function render(){var m=M[cur],s=i>=0?m.st[i]:null,h=s?s[3]:{},rg=s?s[4]:{},last=i>=m.st.length-1,done=s&&s[6];
+ $('ins').innerHTML=m.ins+"<small>"+m.d+"</small><em>"+m.an+"</em>";
+ var o="";[100,300,500,700,900].forEach(function(a){var v=a==100?m.ins:mem(a),c=h[a]||"";
+  o+='<div class="cell '+c+'" id="c'+a+'"><span>Mem['+a+']</span><span><b>'+v+'</b>'+(c?'<span class="tag">'+TAG[c]+'</span>':'')+'</span></div>'});
+ $('mem').innerHTML=o;
+ var acc=done?m.res:ACC0,irc=(i>=0&&!done)?'ins':'';
+ $('regs').innerHTML='<div class="cell '+irc+'" id="rIR"><span>IR</span><b>'+(i>=0?m.ins:'--')+'</b></div><div class="cell '+(done?'op hit':'')+'" id="rACC"><span>ACC</span><b>'+acc+'</b></div><div class="cell '+(rg.R1||'')+'" id="rR1"><span>R1</span><span><b>'+P+'</b>'+(rg.R1?'<span class="tag">'+TAG[rg.R1]+'</span>':'')+'</span></div><div class="legend"><span><span class="dot" style="background:var(--ins)"></span>instruksi</span><span><span class="dot" style="background:var(--ptr)"></span>pointer</span><span><span class="dot" style="background:var(--op)"></span>operand</span></div>';
+ $('count').textContent="Akses memori: "+(i>=0?total(cur,i):0)+" / "+total(cur,m.st.length-1);
+ $('next').disabled=last||busy;pred()}
+function concl(){var m=M[cur],t=total(cur,m.st.length-1),c=$('concl');
+ c.innerHTML='<h2>KESIMPULAN: '+m.n.toUpperCase()+'</h2><p><b>Hasil:</b> ACC = '+m.res+' dengan '+t+' akses memori (termasuk fetch). Pointer = '+P+'.</p><div class="pc"><div class="box2"><b>Kelebihan</b><br>'+m.pro+'</div><div class="box2"><b>Kekurangan</b><br>'+m.con+'</div></div><p class="mute">Coba ganti isi pointer atau mode lain, lalu bandingkan di tabel.</p>';c.hidden=false}
+function pos(k,r,st){k.style.transform="translate("+(r.left-st.left+r.width/2-26)+"px,"+(r.top-st.top+r.height/2-15)+"px)"}
+function fly(p,cb){if(!p){cb();return}
+ var st=$('stage').getBoundingClientRect(),a=$(p[0]).getBoundingClientRect(),b=$(p[1]).getBoundingClientRect(),k=$('pkt');
+ k.className='pkt '+p[3];k.textContent=p[2];k.style.transition='none';pos(k,a,st);k.style.opacity=1;void k.offsetWidth;
+ k.style.transition=RM?'none':'transform .7s steps(10)';pos(k,b,st);
+ setTimeout(function(){k.style.opacity=0;var e=$(p[1]);if(e&&!RM){e.classList.remove('hit');void e.offsetWidth;e.classList.add('hit')}sfx(p[3]);cb()},RM?0:740)}
+function burst(){if(RM)return;var st=$('stage').getBoundingClientRect(),r=$('rACC').getBoundingClientRect(),cs=['--ins','--ptr','--op'];
+ for(var n=0;n<14;n++){var d=document.createElement('div');d.className='px';d.style.background='var('+cs[n%3]+')';
+  d.style.left=(r.left-st.left+r.width/2)+'px';d.style.top=(r.top-st.top+r.height/2)+'px';
+  var ang=n/14*6.283,len=40+Math.random()*50;d.style.setProperty('--dx',Math.cos(ang)*len+'px');d.style.setProperty('--dy',Math.sin(ang)*len+'px');
+  $('stage').appendChild(d);(function(x){setTimeout(function(){x.remove()},750)})(d)}}
+function step(){var m=M[cur];if(busy||i>=m.st.length-1)return;i++;var s=m.st[i];busy=true;render();info();
+ fly(s[7],function(){busy=false;if(s[6]){sfx('win');burst();stop();concl()}render()})}
+function stop(){if(timer){clearInterval(timer);timer=null}$('auto').textContent="Putar otomatis"}
+function fresh(){stop();i=-1;busy=false;answered=false;$('concl').hidden=true;M=build();ctl();render();info();cmp()}
+function ctl(){$('tabs').innerHTML='';Object.keys(M).forEach(function(k){var b=document.createElement('button');b.textContent=M[k].n;b.className=k==cur?'on':'';b.onclick=function(){ac();sfx('pick');cur=k;fresh()};$('tabs').appendChild(b)});
+ $('ptrs').innerHTML='';[300,700,900].forEach(function(v){var b=document.createElement('button');b.textContent=v;b.className=v==P?'on':'';b.onclick=function(){ac();sfx('pick');P=v;fresh()};$('ptrs').appendChild(b)})}
+function cmp(){var o='';Object.keys(M).forEach(function(k){var t=total(k,M[k].st.length-1);o+='<tr class="'+(k==cur?'cur2':'')+'"><td>'+M[k].n+'</td><td>'+M[k].ea+'</td><td><span class="bar" style="width:'+t*22+'px"></span>'+t+'</td><td>'+M[k].res+'</td></tr>'});$('cmp').innerHTML=o}
+function show(p){
+ stop();ac();sfx('pick');
+ var h=p==='home',sim=p==='sim';
+ document.body.className=sim?'simmode':'';
+ $('home').hidden=!h;$('sim').hidden=!sim;
+ $('trail').hidden=$('pac').hidden=$('gh').hidden=!h;
+ $('nh').className=h?'on':'';$('ns').className=sim?'on':'';
+ $('nh').removeAttribute('aria-current');$('ns').removeAttribute('aria-current');
+ (h?$('nh'):$('ns')).setAttribute('aria-current','page');
+ window.scrollTo(0,0);
+ if(sim){ctl();render();info();cmp()}
+}
+$('nh').onclick=function(){show('home')};
+$('ns').onclick=function(){show('sim')};
+$('go').onclick=function(){show('sim')};
+$('next').onclick=function(){ac();stop();step()};
+$('reset').onclick=function(){ac();sfx('reset');fresh()};
+$('auto').onclick=function(){ac();if(timer){stop();return}if(i>=M[cur].st.length-1){i=-1;$('concl').hidden=true;render()}$('auto').textContent='Jeda';step();timer=setInterval(step,RM?2000:2800)};
+$('snd').onclick=function(){snd=!snd;this.setAttribute('aria-pressed',snd);this.textContent='Suara: '+(snd?'nyala':'mati');if(snd){ac();sfx('pick')}};
+var cl=['#3b66e8','#0c8a63','#c27700','#b8399e','#d9453d'],ad=[100,300,500,700,900];
+ad.forEach(function(a,n){var b=document.createElement('button');b.className='bx';b.textContent='Mem['+a+']';b.style.background=cl[n];b.style.setProperty('--d',(-n*.25)+'s');b.onclick=function(){ac();tone(262*Math.pow(1.26,n),0,.12,'square');tone(262*Math.pow(1.26,n)*1.5,.08,.14,'square')};$('stack').appendChild(b)});
+
+</script>
+</body>
+</html>
